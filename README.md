@@ -6,28 +6,25 @@
 This is an advanced, AI-powered system designed to diagnose crop diseases accurately from images. By leveraging Convolutional Neural Networks (CNN) achieving over 85% accuracy and a modern web stack, this project offers farmers and agriculturists a fast, reliable tool for identifying plant diseases and getting actionable recommendations.
 
 ## Ecosystem & Features
-- **Real-Time Image Classification**: Upload a picture of a crop leaf and receive an instant diagnosis.
-- **High Accuracy Model**: Custom CNN architecture trained on a diverse dataset covering Corn, Potato, Rice, Sugarcane, and Wheat.
-- **History Tracking**: Keeps a secure log of all past predictions for users, accessible via a personal dashboard.
-- **Account Security**: JWT-based authentication to ensure that diagnostic history is kept private.
-- **Scalable Backend**: Built with FastAPI for speed and PostgreSQL for robust data management.
-- **Modern User Interface**: A dynamic, premium web experience crafted with Next.js and TailwindCSS.
+- Real-Time Image Classification: Upload a crop image and get instant disease detection.
+- High Accuracy Model: Custom CNN trained on multiple crop datasets.
+- History Tracking: Stores past predictions in a secure dashboard.
+- Authentication: JWT-based user authentication system.
+- Scalable Backend: Built with FastAPI and PostgreSQL.
+- Modern UI: Developed using Next.js, React, and TailwindCSS.
 
 ## Technologies Used
-- **Machine Learning**: Python, TensorFlow/Keras or PyTorch, OpenCV
-- **Backend API**: Python, FastAPI, SQLAlchemy, PostgreSQL, PyJWT
-- **Frontend Stack**: Next.js 14, React, TypeScript, TailwindCSS
-- **Dataset**: Covered crops include Corn (Rust, Blight, Spot), Potato (Blights), Rice (Blast, Brown Spot), Sugarcane (Rot, Blight), and Wheat (Rusts).
+- Machine Learning: Python, TensorFlow/PyTorch, OpenCV
+- Backend: FastAPI, SQLAlchemy, PostgreSQL, PyJWT
+- Frontend: Next.js, React, TypeScript, TailwindCSS
 
 ## Project Structure
-```
-.
-├── backend/            # FastAPI application and PostgreSQL database integration
-├── frontend/           # Next.js web application
-├── model/              # CNN training scripts, model artifacts, and data loaders
-├── DataSet/            # Contains 17 classes of crop leaf images used for training
-└── README.md
-```
+backend/ # FastAPI backend
+frontend/ # Next.js frontend
+model/ # ML model and training scripts
+DataSet/ # Crop image dataset
+README.md
+
 
 ## Setup & Installation
 ### Prerequisites
@@ -36,12 +33,13 @@ This is an advanced, AI-powered system designed to diagnose crop diseases accura
 - PostgreSQL
 - Git
 
-*(Detailed setup steps for each component will be generated as development progresses).*
+*(Detailed setup steps will be added soon.)*
 
 ## Future Scope
-- Integration with local weather APIs to predict disease outbreak probabilities.
-- Mobile application using React Native.
-- Multi-language support for regional farming communities.
+- Weather API integration for disease prediction
+- Mobile application (React Native)
+- Multi-language support for farmers
 
 ---
-*This project was built to promote sustainable agriculture and leverage cutting-edge AI for food security.*
+
+*Built to promote smart agriculture using AI 🌱*
