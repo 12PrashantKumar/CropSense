@@ -25,3 +25,7 @@ Thumbs.db
 
 # Installer
 *.exe
+
+# Backend Virtual environments
+backend/venv/
+backend/venv312/
