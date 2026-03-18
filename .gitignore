@@ -1,0 +1,27 @@
+# Virtual environments
+model/venv/
+__pycache__/
+*.pyc
+
+# Trained model (too large for git - 509MB)
+model/crop_disease_model.keras
+
+# Dataset (too large)
+DataSet/
+
+# Node modules
+frontend/node_modules/
+frontend/.next/
+
+# Uploads
+backend/uploads/
+
+# Environment files
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Installer
+*.exe
