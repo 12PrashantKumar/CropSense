@@ -10,7 +10,6 @@ import uuid
 import json
 import numpy as np
 from PIL import Image
-import tensorflow as tf
 
 import models
 from database import engine, get_db
@@ -50,69 +49,72 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # --- Load ML Model ---
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "model", "crop_disease_model.keras")
-CLASS_INDICES_PATH = os.path.join(os.path.dirname(__file__), "..", "model", "class_indices.json")
+MODEL_DIR          = os.path.join(os.path.dirname(__file__), "..", "model")
+TFLITE_MODEL_PATH  = os.path.join(MODEL_DIR, "crop_disease_model.tflite")
+KERAS_MODEL_PATH   = os.path.join(MODEL_DIR, "crop_disease_model.keras")
+CLASS_INDICES_PATH = os.path.join(MODEL_DIR, "class_indices.json")
 IMG_HEIGHT = 224
-IMG_WIDTH = 224
+IMG_WIDTH  = 224
 
-print("Loading crop disease model...")
+HF_REPO_ID = os.getenv("HF_REPO_ID", "")  # e.g. "yourname/cropsense-model"
 
-# Auto-download model from Hugging Face Hub if not present locally
-HF_REPO_ID = os.getenv("HF_REPO_ID", "")   # e.g. "your-username/cropsense-model"
+def _download_from_hf(filename: str):
+    """Download a file from Hugging Face Hub into the model directory."""
+    from huggingface_hub import hf_hub_download
+    print(f"Downloading {filename} from Hugging Face ({HF_REPO_ID}) ...")
+    hf_hub_download(repo_id=HF_REPO_ID, filename=filename,
+                    local_dir=os.path.abspath(MODEL_DIR))
+    print(f"Downloaded: {filename}")
 
-if not os.path.exists(MODEL_PATH):
-    if HF_REPO_ID:
-        print(f"Model not found locally. Downloading from Hugging Face: {HF_REPO_ID} ...")
-        try:
-            from huggingface_hub import hf_hub_download
-            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
-            downloaded = hf_hub_download(
-                repo_id=HF_REPO_ID,
-                filename="crop_disease_model.keras",
-                local_dir=os.path.dirname(MODEL_PATH),
-            )
-            print(f"Model downloaded to: {downloaded}")
-        except Exception as e:
-            print(f"ERROR: Failed to download model from Hugging Face: {e}")
-            raise SystemExit(1)
-    else:
-        print("\n" + "=" * 60)
-        print("  ERROR: Model file not found!")
-        print(f"  Expected: {os.path.abspath(MODEL_PATH)}")
-        print()
-        print("  To fix, choose one option:")
-        print("  OPTION 1 — Set HF_REPO_ID env var to auto-download from Hugging Face")
-        print("  OPTION 2 — Copy crop_disease_model.keras into the model/ folder")
-        print("  OPTION 3 — Run: python setup.py --train")
-        print("=" * 60 + "\n")
-        raise SystemExit(1)
-
+# Download class_indices if missing
 if not os.path.exists(CLASS_INDICES_PATH):
-    if HF_REPO_ID:
-        print("Downloading class_indices.json from Hugging Face ...")
-        try:
-            from huggingface_hub import hf_hub_download
-            hf_hub_download(
-                repo_id=HF_REPO_ID,
-                filename="class_indices.json",
-                local_dir=os.path.dirname(CLASS_INDICES_PATH),
-            )
-        except Exception as e:
-            print(f"ERROR: Failed to download class_indices.json: {e}")
-            raise SystemExit(1)
-    else:
-        print("\n" + "=" * 60)
-        print("  ERROR: Class indices file not found!")
-        print(f"  Expected: {os.path.abspath(CLASS_INDICES_PATH)}")
-        print("  Copy model/class_indices.json from the original machine.")
-        print("=" * 60 + "\n")
+    if not HF_REPO_ID:
+        print("ERROR: class_indices.json missing and HF_REPO_ID not set.")
         raise SystemExit(1)
+    _download_from_hf("class_indices.json")
 
-ml_model = tf.keras.models.load_model(MODEL_PATH)
 with open(CLASS_INDICES_PATH, "r") as f:
     class_indices = json.load(f)
 index_to_class = {v: k for k, v in class_indices.items()}
-print(f"Model loaded. {len(class_indices)} classes detected.")
+
+# ── Prefer TFLite (lightweight, works on Render free tier) ──────────────
+USE_TFLITE = os.getenv("USE_TFLITE", "false").lower() == "true"
+
+if USE_TFLITE:
+    if not os.path.exists(TFLITE_MODEL_PATH):
+        if not HF_REPO_ID:
+            print("ERROR: TFLite model missing and HF_REPO_ID not set.")
+            raise SystemExit(1)
+        _download_from_hf("crop_disease_model.tflite")
+
+    print("Loading TFLite model (production mode)...")
+    try:
+        from ai_edge_litert.interpreter import Interpreter
+    except ImportError:
+        import tensorflow as tf
+        Interpreter = tf.lite.Interpreter
+
+    _interpreter = Interpreter(model_path=os.path.abspath(TFLITE_MODEL_PATH))
+    _interpreter.allocate_tensors()
+    _input_details  = _interpreter.get_input_details()
+    _output_details = _interpreter.get_output_details()
+    ml_model = None
+    print(f"TFLite model loaded. {len(class_indices)} classes.")
+
+else:
+    # Local dev — use full Keras model
+    if not os.path.exists(KERAS_MODEL_PATH):
+        if HF_REPO_ID:
+            _download_from_hf("crop_disease_model.keras")
+        else:
+            print("ERROR: crop_disease_model.keras missing. Copy it or set HF_REPO_ID.")
+            raise SystemExit(1)
+
+    print("Loading Keras model (local mode)...")
+    import tensorflow as tf
+    ml_model    = tf.keras.models.load_model(KERAS_MODEL_PATH)
+    _interpreter = None
+    print(f"Keras model loaded. {len(class_indices)} classes.")
 
 RECOMMENDATIONS = {
     "Corn___Common_Rust": "Apply fungicide (e.g., mancozeb or propiconazole). Ensure proper plant spacing for air circulation.",
@@ -135,18 +137,25 @@ RECOMMENDATIONS = {
 }
 
 def predict_image(image_path: str):
-    """Run inference on a single image using the loaded model."""
+    """Run inference using TFLite (production) or Keras (local)."""
     img = Image.open(image_path).convert("RGB")
     img = img.resize((IMG_WIDTH, IMG_HEIGHT))
-    img_array = np.array(img) / 255.0
+    img_array = np.array(img, dtype=np.float32) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
-    predictions = ml_model.predict(img_array)
-    predicted_index = int(np.argmax(predictions[0]))
-    confidence = float(predictions[0][predicted_index])
-    disease_name = index_to_class[predicted_index]
-    recommendation = RECOMMENDATIONS.get(disease_name, "Consult a local agricultural expert for guidance.")
+    if _interpreter is not None:
+        # TFLite inference
+        _interpreter.set_tensor(_input_details[0]['index'], img_array)
+        _interpreter.invoke()
+        predictions = _interpreter.get_tensor(_output_details[0]['index'])
+    else:
+        # Keras inference
+        predictions = ml_model.predict(img_array)
 
+    predicted_index = int(np.argmax(predictions[0]))
+    confidence      = float(predictions[0][predicted_index])
+    disease_name    = index_to_class[predicted_index]
+    recommendation  = RECOMMENDATIONS.get(disease_name, "Consult a local agricultural expert for guidance.")
     return disease_name, confidence, recommendation
 
 # --- Pydantic Schemas ---

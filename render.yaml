@@ -3,14 +3,16 @@ services:
     name: cropsense-backend
     runtime: python
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements-prod.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
-        sync: false          # You will paste the Neon URL in Render dashboard
+        sync: false          # Paste your Neon PostgreSQL URL here
       - key: SECRET_KEY
-        generateValue: true  # Render auto-generates a secure random value
+        generateValue: true  # Render auto-generates a secure value
       - key: HF_REPO_ID
-        sync: false          # Your Hugging Face repo e.g. "yourname/cropsense-model"
+        sync: false          # e.g. "yourname/cropsense-model"
       - key: FRONTEND_URL
-        sync: false          # Your Vercel frontend URL e.g. "https://cropsense.vercel.app"
+        sync: false          # e.g. "https://cropsense.vercel.app"
+      - key: USE_TFLITE
+        value: "true"        # Use lightweight TFLite model on Render
