@@ -5,7 +5,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 import uvicorn
 import os
 import shutil
-from datetime import timedelta
+from datetime import timedelta, datetime
 import uuid
 import json
 import numpy as np
@@ -173,19 +173,7 @@ class PredictionResponse(BaseModel):
     confidence: float
     recommendation: str
     image_path: str
-    timestamp: Optional[str] = None
-
-    @classmethod
-    def from_orm(cls, obj):
-        data = {
-            "id": obj.id,
-            "disease_name": obj.disease_name,
-            "confidence": obj.confidence,
-            "recommendation": obj.recommendation,
-            "image_path": obj.image_path,
-            "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
-        }
-        return cls(**data)
+    timestamp: Optional[datetime] = None
 
     class Config:
         from_attributes = True
