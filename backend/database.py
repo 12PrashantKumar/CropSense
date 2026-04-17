@@ -6,10 +6,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Example PostgreSQL URL: postgresql://user:password@localhost/dbname
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/crop_disease_db")
+# Default: SQLite (no server needed, works on any machine).
+# To use PostgreSQL, set DATABASE_URL in a .env file:
+#   DATABASE_URL=postgresql://user:password@localhost/crop_disease_db
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./cropsense.db")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+connect_args = {"check_same_thread": False} if SQLALCHEMY_DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: cropsense-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        sync: false          # You will paste the Neon URL in Render dashboard
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates a secure random value
+      - key: HF_REPO_ID
+        sync: false          # Your Hugging Face repo e.g. "yourname/cropsense-model"
+      - key: FRONTEND_URL
+        sync: false          # Your Vercel frontend URL e.g. "https://cropsense.vercel.app"

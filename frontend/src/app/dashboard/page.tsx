@@ -18,6 +18,7 @@ export default function Dashboard() {
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [analyzeError, setAnalyzeError] = useState<string | null>(null);
     const [history, setHistory] = useState<HistoryItem[]>([]);
     const [username, setUsername] = useState<string>('Farmer');
 
@@ -80,19 +81,25 @@ export default function Dashboard() {
         }
 
         setIsAnalyzing(true);
+        setAnalyzeError(null);
 
         try {
             const data = await submitDiagnosticImage(selectedFile, token);
             setResult({
                 disease: data.disease_name,
-                confidence: Math.round(data.confidence * 100), // Assuming API returns 0-1, convert to %
+                confidence: Math.round(data.confidence * 100),
                 recommendation: data.recommendation
             });
-            // Refresh history
             loadHistory(token);
-        } catch (error) {
+        } catch (error: any) {
             console.error("Analysis failed", error);
-            alert("Failed to analyze image. Ensure backend is running.");
+            if (error.message === "SESSION_EXPIRED") {
+                localStorage.removeItem("token");
+                localStorage.removeItem("username");
+                router.push('/auth');
+            } else {
+                setAnalyzeError(error.message || "Failed to analyze image. Ensure backend is running.");
+            }
         } finally {
             setIsAnalyzing(false);
         }
@@ -190,6 +197,13 @@ export default function Dashboard() {
                             </div>
                         )}
                     </div>
+
+                    {/* Error message */}
+                    {analyzeError && (
+                        <div className="glass-panel rounded-2xl px-6 py-4 border border-red-500/30 bg-red-900/20 text-red-300 text-sm">
+                            {analyzeError}
+                        </div>
+                    )}
 
                     {/* Results Area */}
                     {result && (

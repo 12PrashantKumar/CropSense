@@ -8,13 +8,20 @@ import matplotlib.pyplot as plt
 import json
 
 # Configuration
-DATASET_PATH = r"c:\Users\prash\Desktop\WORM\DataSet\Crop Diseases"
+# Dataset path: defaults to <project_root>/DataSet/Crop Diseases
+# Override by setting the DATASET_PATH environment variable.
+_THIS_DIR    = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_DIR = os.path.dirname(_THIS_DIR)
+DATASET_PATH = os.environ.get(
+    "DATASET_PATH",
+    os.path.join(_PROJECT_DIR, "DataSet", "Crop Diseases")
+)
 IMG_HEIGHT = 224
 IMG_WIDTH = 224
 BATCH_SIZE = 32
 EPOCHS = 10 # Change for more thorough training
-MODEL_SAVE_PATH = 'crop_disease_model.keras'
-CLASS_INDICES_PATH = 'class_indices.json'
+MODEL_SAVE_PATH = os.path.join(_THIS_DIR, 'crop_disease_model.keras')
+CLASS_INDICES_PATH = os.path.join(_THIS_DIR, 'class_indices.json')
 
 def create_model(num_classes):
     """Create a CNN model for image classification."""

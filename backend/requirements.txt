@@ -11,3 +11,5 @@ bcrypt==4.1.1
 python-dotenv==1.0.0
 tensorflow
 numpy
+huggingface_hub
+pillow

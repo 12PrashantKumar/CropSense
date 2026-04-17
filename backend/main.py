@@ -29,10 +29,18 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Crop Disease Detection API")
 
-# Configure CORS for Next.js frontend
+# Configure CORS — allow local dev + any Vercel deployment
+ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+]
+FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+if FRONTEND_URL:
+    ALLOWED_ORIGINS.append(FRONTEND_URL)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -48,6 +56,58 @@ IMG_HEIGHT = 224
 IMG_WIDTH = 224
 
 print("Loading crop disease model...")
+
+# Auto-download model from Hugging Face Hub if not present locally
+HF_REPO_ID = os.getenv("HF_REPO_ID", "")   # e.g. "your-username/cropsense-model"
+
+if not os.path.exists(MODEL_PATH):
+    if HF_REPO_ID:
+        print(f"Model not found locally. Downloading from Hugging Face: {HF_REPO_ID} ...")
+        try:
+            from huggingface_hub import hf_hub_download
+            os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
+            downloaded = hf_hub_download(
+                repo_id=HF_REPO_ID,
+                filename="crop_disease_model.keras",
+                local_dir=os.path.dirname(MODEL_PATH),
+            )
+            print(f"Model downloaded to: {downloaded}")
+        except Exception as e:
+            print(f"ERROR: Failed to download model from Hugging Face: {e}")
+            raise SystemExit(1)
+    else:
+        print("\n" + "=" * 60)
+        print("  ERROR: Model file not found!")
+        print(f"  Expected: {os.path.abspath(MODEL_PATH)}")
+        print()
+        print("  To fix, choose one option:")
+        print("  OPTION 1 — Set HF_REPO_ID env var to auto-download from Hugging Face")
+        print("  OPTION 2 — Copy crop_disease_model.keras into the model/ folder")
+        print("  OPTION 3 — Run: python setup.py --train")
+        print("=" * 60 + "\n")
+        raise SystemExit(1)
+
+if not os.path.exists(CLASS_INDICES_PATH):
+    if HF_REPO_ID:
+        print("Downloading class_indices.json from Hugging Face ...")
+        try:
+            from huggingface_hub import hf_hub_download
+            hf_hub_download(
+                repo_id=HF_REPO_ID,
+                filename="class_indices.json",
+                local_dir=os.path.dirname(CLASS_INDICES_PATH),
+            )
+        except Exception as e:
+            print(f"ERROR: Failed to download class_indices.json: {e}")
+            raise SystemExit(1)
+    else:
+        print("\n" + "=" * 60)
+        print("  ERROR: Class indices file not found!")
+        print(f"  Expected: {os.path.abspath(CLASS_INDICES_PATH)}")
+        print("  Copy model/class_indices.json from the original machine.")
+        print("=" * 60 + "\n")
+        raise SystemExit(1)
+
 ml_model = tf.keras.models.load_model(MODEL_PATH)
 with open(CLASS_INDICES_PATH, "r") as f:
     class_indices = json.load(f)
@@ -112,6 +172,20 @@ class PredictionResponse(BaseModel):
     confidence: float
     recommendation: str
     image_path: str
+    timestamp: Optional[str] = None
+
+    @classmethod
+    def from_orm(cls, obj):
+        data = {
+            "id": obj.id,
+            "disease_name": obj.disease_name,
+            "confidence": obj.confidence,
+            "recommendation": obj.recommendation,
+            "image_path": obj.image_path,
+            "timestamp": obj.timestamp.isoformat() if obj.timestamp else None,
+        }
+        return cls(**data)
+
     class Config:
         from_attributes = True
 

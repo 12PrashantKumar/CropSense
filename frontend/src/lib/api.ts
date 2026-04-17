@@ -1,5 +1,6 @@
 // src/lib/api.ts
-const API_URL = "http://localhost:8000/api";
+// In production (Vercel), set NEXT_PUBLIC_API_URL to your Render backend URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export async function loginUser(username: string, password: string) {
     const formData = new URLSearchParams();
@@ -51,8 +52,13 @@ export async function submitDiagnosticImage(file: File, token: string) {
         body: formData,
     });
 
+    if (response.status === 401) {
+        throw new Error("SESSION_EXPIRED");
+    }
+
     if (!response.ok) {
-        throw new Error("Failed to analyze image");
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.detail || `Server error: ${response.status}`);
     }
 
     return response.json();
