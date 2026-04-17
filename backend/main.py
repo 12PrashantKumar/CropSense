@@ -28,19 +28,11 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Crop Disease Detection API")
 
-# Configure CORS — allow local dev + any Vercel deployment
-ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-]
-FRONTEND_URL = os.getenv("FRONTEND_URL", "")
-if FRONTEND_URL:
-    ALLOWED_ORIGINS.append(FRONTEND_URL)
-
+# Configure CORS — allow all origins (public API)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
